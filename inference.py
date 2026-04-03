@@ -90,18 +90,17 @@ def rule_based_agent(subject: str, body: str, sender: str) -> str:
 
 # ── Run one full task ────────────────────────────────────────────
 def run_task(difficulty: str) -> dict:
-    """Run a complete task and return detailed results"""
-    print(f"\n{'='*50}")
-    print(f"  Running Task: {difficulty.upper()}")
-    print(f"{'='*50}")
+    """Run one complete task and return score"""
+    
+    # START log
+    print(f"[START] task={difficulty}")
 
-    # Reset environment
     response = requests.post(f"{BASE_URL}/reset?difficulty={difficulty}")
     obs = response.json()
 
     rewards = []
-    step_num = 0
     done = False
+    step_num = 0
 
     while not done:
         step_num += 1
@@ -109,53 +108,34 @@ def run_task(difficulty: str) -> dict:
         body = obs.get("body", "")
         sender = obs.get("sender", "")
 
-        # Skip if no email (done state)
         if not subject:
             break
 
-        # Agent decides label
-        if OPENAI_API_KEY:
-            label = ask_gpt(subject, body, sender)
-            agent_name = "GPT-3.5"
-        else:
-            label = rule_based_agent(subject, body, sender)
-            agent_name = "Rule-Based Agent"
+        label = ask_llm(subject, body, sender)
 
-        # Take action
-        response = requests.post(
+        result = requests.post(
             f"{BASE_URL}/step",
             json={"label": label}
-        )
-        result = response.json()
+        ).json()
 
         reward_value = result["reward"]["value"]
         correct_label = result["info"]["correct_label"]
         correct = result["reward"]["correct"]
         done = result["done"]
-
         rewards.append(reward_value)
 
-        # Print each step
-        status = "✅" if correct else "❌"
-        print(f"  Email {step_num}: '{subject[:40]}...' " 
-              if len(subject) > 40 else f"  Email {step_num}: '{subject}'")
-        print(f"  {status} Agent said: {label:<8} | Correct: {correct_label:<8} | Reward: {reward_value}")
+        # STEP log
+        print(f"[STEP] email_id={obs.get('email_id')} action={label} reward={reward_value} correct={correct_label}")
 
-        # Get next observation
         if not done:
             obs = result["observation"]
 
-    # Calculate final score
-    final_score = round(sum(rewards) / len(rewards), 3) if rewards else 0.0
+    score = round(sum(rewards) / len(rewards), 3) if rewards else 0.0
 
-    print(f"\n  📊 Final Score ({difficulty}): {final_score}")
-    return {
-        "difficulty": difficulty,
-        "total_emails": len(rewards),
-        "final_score": final_score,
-        "agent": agent_name if OPENAI_API_KEY else "Rule-Based Agent"
-    }
-
+    # END log
+    print(f"[END] task={difficulty} score={score}")
+    
+    return {"difficulty": difficulty, "emails": len(rewards), "score": score}
 
 # ── Main ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
