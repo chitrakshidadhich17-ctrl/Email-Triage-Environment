@@ -11,7 +11,11 @@ dependencies = [
     "openai",
     "pyyaml",
     "requests",
+    "openenv-core>=0.2.0",
 ]
+
+[project.scripts]
+server = "server:app"
 
 [project.urls]
 Homepage = "https://huggingface.co/spaces/chitrakshi404/email-triage-env"
