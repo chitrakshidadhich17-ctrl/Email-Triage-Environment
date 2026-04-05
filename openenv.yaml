@@ -1,46 +1,64 @@
 name: email-triage-env
 version: "1.0.0"
-description: >
-  An OpenEnv environment where an AI agent triages an email inbox
-  by classifying each email as urgent, normal, or spam.
+description: "An OpenEnv environment where an AI agent triages emails by classifying each as urgent, normal, or spam."
 tags:
   - openenv
   - email
   - triage
   - nlp
 
+entry_point: server.py
+
 observation_space:
   type: object
-  fields:
-    email_id: string
-    subject: string
-    body: string
-    sender: string
-    emails_remaining: integer
-    current_score: float
+  properties:
+    email_id:
+      type: string
+    subject:
+      type: string
+    body:
+      type: string
+    sender:
+      type: string
+    emails_remaining:
+      type: integer
+    current_score:
+      type: number
 
 action_space:
   type: object
-  fields:
+  properties:
     label:
       type: string
-      enum: [urgent, normal, spam]
+      enum:
+        - urgent
+        - normal
+        - spam
 
 reward:
-  type: float
-  range: [0.0, 1.0]
-  description: "1.0 for correct label, 0.3 for close miss, 0.0 for wrong"
+  type: number
+  minimum: 0.0
+  maximum: 1.0
 
 tasks:
   - id: easy
-    name: Basic Email Sorting
+    name: "Basic Email Sorting"
     difficulty: easy
-    description: Sort 3 emails correctly
+    description: "Sort 3 emails correctly into urgent, normal, or spam"
+    max_score: 1.0
   - id: medium
-    name: Mixed Inbox Triage
+    name: "Mixed Inbox Triage"
     difficulty: medium
-    description: Sort 5 emails with ambiguous cases
+    description: "Sort 5 emails including ambiguous cases"
+    max_score: 1.0
   - id: hard
-    name: Full Inbox Management
+    name: "Full Inbox Management"
     difficulty: hard
-    description: Sort all 8 emails accurately
+    description: "Sort 8 varied emails with maximum accuracy"
+    max_score: 1.0
+
+endpoints:
+  reset: "/reset"
+  step: "/step"
+  state: "/state"
+  tasks: "/tasks"
