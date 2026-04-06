@@ -81,6 +81,10 @@ state = EnvState()
 def root():
     return {"message": "Email Triage OpenEnv is running!"}
 
+@app.get("/ui", response_class=HTMLResponse)
+def ui():
+    return open("index.html").read()
+
 @app.post("/reset")
 def reset(difficulty: str = "easy"):
     inbox = EMAILS.copy()
