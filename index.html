@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Triage OpenEnv</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
+  
+  .header { background: #1a1d2e; border-bottom: 1px solid #2a2d3e; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+  .header p { font-size: 12px; color: #888; margin-top: 2px; }
+  .live-badge { background: #1a3a2a; color: #4ade80; border: 1px solid #2a5a3a; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .stat-card { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; padding: 1rem; }
+  .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 600; color: #fff; }
+  .stat-value.green { color: #4ade80; }
+  .stat-value.blue { color: #60a5fa; }
+  .stat-value.yellow { color: #fbbf24; }
+
+  .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; }
+
+  .email-panel { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; overflow: hidden; }
+  .panel-header { padding: 1rem 1.25rem; border-bottom: 1px solid #2a2d3e; display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-size: 13px; font-weight: 600; color: #fff; }
+  .counter-badge { background: #2a2d3e; color: #888; padding: 3px 10px; border-radius: 20px; font-size: 11px; }
+
+  .difficulty-tabs { display: flex; gap: 8px; padding: 1rem 1.25rem; border-bottom: 1px solid #2a2d3e; }
+  .tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid #2a2d3e; background: transparent; color: #888; transition: all 0.15s; }
+  .tab:hover { background: #2a2d3e; color: #ccc; }
+  .tab.active { background: #2a3a5e; color: #60a5fa; border-color: #3a5a8e; }
+
+  .email-content { padding: 1.25rem; }
+  .email-from { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #2a3a5e; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #60a5fa; flex-shrink: 0; }
+  .from-name { font-size: 13px; color: #ccc; }
+  .from-email { font-size: 11px; color: #666; }
+  .email-subject { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 10px; line-height: 1.4; }
+  .email-body { font-size: 13px; color: #999; line-height: 1.7; margin-bottom: 1.5rem; }
+
+  .action-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .action-btn { padding: 12px; border-radius: 10px; border: 1px solid; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .action-btn:hover { transform: translateY(-1px); }
+  .action-btn:active { transform: scale(0.98); }
+  .btn-urgent { background: #2a1a1a; border-color: #7f1d1d; color: #f87171; }
+  .btn-urgent:hover { background: #3a1a1a; border-color: #ef4444; }
+  .btn-normal { background: #1a2a1a; border-color: #14532d; color: #4ade80; }
+  .btn-normal:hover { background: #1a3a1a; border-color: #22c55e; }
+  .btn-spam { background: #2a2a1a; border-color: #713f12; color: #fbbf24; }
+  .btn-spam:hover { background: #3a3a1a; border-color: #f59e0b; }
+
+  .done-panel { padding: 2rem; text-align: center; }
+  .done-score { font-size: 64px; font-weight: 700; color: #4ade80; line-height: 1; }
+  .done-label { font-size: 14px; color: #888; margin-top: 8px; margin-bottom: 1.5rem; }
+  .retry-btn { background: #1a3a2a; border: 1px solid #2a5a3a; color: #4ade80; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .retry-btn:hover { background: #1a4a2a; }
+
+  .right-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .history-panel { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; overflow: hidden; flex: 1; }
+  .history-list { padding: 0.5rem 0; max-height: 320px; overflow-y: auto; }
+  .history-item { display: flex; align-items: center; gap: 10px; padding: 8px 1.25rem; border-bottom: 1px solid #1e2130; }
+  .history-item:last-child { border-bottom: none; }
+  .h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .h-dot.correct { background: #4ade80; }
+  .h-dot.wrong { background: #f87171; }
+  .h-dot.partial { background: #fbbf24; }
+  .h-subject { font-size: 12px; color: #999; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-label { font-size: 11px; color: #666; }
+  .h-reward { font-size: 12px; font-weight: 600; margin-left: auto; }
+  .h-reward.r1 { color: #4ade80; }
+  .h-reward.r03 { color: #fbbf24; }
+  .h-reward.r0 { color: #f87171; }
+
+  .info-panel { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; padding: 1.25rem; }
+  .info-title { font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1e2130; }
+  .info-row:last-child { border-bottom: none; }
+  .info-key { font-size: 12px; color: #666; }
+  .info-val { font-size: 12px; color: #ccc; font-weight: 500; }
+
+  .reward-toast { position: fixed; top: 80px; right: 20px; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 100; }
+  .reward-toast.show { opacity: 1; }
+  .toast-correct { background: #1a3a2a; border: 1px solid #2a5a3a; color: #4ade80; }
+  .toast-partial { background: #2a2a1a; border: 1px solid #4a4a1a; color: #fbbf24; }
+  .toast-wrong { background: #2a1a1a; border: 1px solid #4a1a1a; color: #f87171; }
+
+  .empty-history { padding: 2rem 1.25rem; text-align: center; color: #666; font-size: 13px; }
+
+  @media (max-width: 700px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Email Triage OpenEnv</h1>
+    <p>Classify each email as urgent, normal, or spam</p>
+  </div>
+  <span class="live-badge">LIVE</span>
+</div>
+
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Score</div>
+      <div class="stat-value green" id="score">0.00</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Correct</div>
+      <div class="stat-value blue" id="correct">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Remaining</div>
+      <div class="stat-value yellow" id="remaining">3</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Accuracy</div>
+      <div class="stat-value" id="accuracy">0%</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div class="email-panel">
+      <div class="panel-header">
+        <span class="panel-title">Current Email</span>
+        <span class="counter-badge" id="counter">1 of 3</span>
+      </div>
+      <div class="difficulty-tabs">
+        <button class="tab active" onclick="setDiff('easy',this)">Easy — 3 emails</button>
+        <button class="tab" onclick="setDiff('medium',this)">Medium — 5 emails</button>
+        <button class="tab" onclick="setDiff('hard',this)">Hard — 8 emails</button>
+      </div>
+      <div id="email-view">
+        <div class="email-content">
+          <div class="email-from">
+            <div class="avatar" id="avatar">OP</div>
+            <div>
+              <div class="from-name" id="from-name">Operations Team</div>
+              <div class="from-email" id="from-email">ops@company.com</div>
+            </div>
+          </div>
+          <div class="email-subject" id="subject">URGENT: Server is down!</div>
+          <div class="email-body" id="body">Production server crashed. Customers cannot access the site. Need immediate fix.</div>
+          <div class="action-buttons">
+            <button class="action-btn btn-urgent" onclick="classify('urgent')">Urgent</button>
+            <button class="action-btn btn-normal" onclick="classify('normal')">Normal</button>
+            <button class="action-btn btn-spam" onclick="classify('spam')">Spam</button>
+          </div>
+        </div>
+      </div>
+      <div id="done-view" style="display:none;">
+        <div class="done-panel">
+          <div class="done-score" id="final-score">1.00</div>
+          <div class="done-label">final score — all emails classified!</div>
+          <button class="retry-btn" onclick="startGame()">Try again</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="history-panel">
+        <div class="panel-header">
+          <span class="panel-title">History</span>
+        </div>
+        <div class="history-list" id="history-list">
+          <div class="empty-history" id="empty-msg">No emails classified yet</div>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <div class="info-title">Reward Function</div>
+        <div class="info-row">
+          <span class="info-key">Correct label</span>
+          <span class="info-val" style="color:#4ade80">+1.0</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Urgent vs Normal</span>
+          <span class="info-val" style="color:#fbbf24">+0.3</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Wrong label</span>
+          <span class="info-val" style="color:#f87171">+0.0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="reward-toast" id="toast"></div>
+
+<script>
+const EMAILS = [
+  {id:"e1",subject:"URGENT: Server is down!",body:"Production server crashed. Customers cannot access the site. Need immediate fix.",sender:"ops@company.com",label:"urgent"},
+  {id:"e2",subject:"Team lunch this Friday",body:"Hey everyone, we are doing team lunch at 1pm on Friday. Hope to see you there!",sender:"hr@company.com",label:"normal"},
+  {id:"e3",subject:"You won $1,000,000!!!",body:"Congratulations! Click this link to claim your prize. Limited time offer!",sender:"noreply@totallylegit.xyz",label:"spam"},
+  {id:"e4",subject:"Critical security vulnerability found",body:"A zero-day exploit has been found in our auth system. Patching required today.",sender:"security@company.com",label:"urgent"},
+  {id:"e5",subject:"Monthly newsletter",body:"Here is what happened in tech this month. Unsubscribe anytime.",sender:"newsletter@techdigest.com",label:"normal"},
+  {id:"e6",subject:"Buy cheap meds online",body:"Best prices on all medications. No prescription needed. Order now!",sender:"deals@pharmaspam.net",label:"spam"},
+  {id:"e7",subject:"Database backup failed",body:"Automated backup failed at 3am. Manual intervention required before data loss.",sender:"alerts@company.com",label:"urgent"},
+  {id:"e8",subject:"Coffee machine is broken",body:"Just a heads up, the office coffee machine needs fixing. Someone call facilities.",sender:"john@company.com",label:"normal"},
+];
+
+let inbox=[], idx=0, scores=[], diff="easy", correctCount=0;
+
+function setDiff(d,btn){
+  diff=d;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  startGame();
+}
+
+function shuffle(arr){
+  let a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    let j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function getInitials(email){
+  const name=email.split('@')[0];
+  const parts=name.split(/[._-]/);
+  if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
+  return name.slice(0,2).toUpperCase();
+}
+
+function startGame(){
+  const limits={easy:3,medium:5,hard:8};
+  inbox=shuffle(EMAILS).slice(0,limits[diff]);
+  idx=0; scores=[]; correctCount=0;
+  document.getElementById('history-list').innerHTML='<div class="empty-history" id="empty-msg">No emails classified yet</div>';
+  document.getElementById('done-view').style.display='none';
+  document.getElementById('email-view').style.display='block';
+  updateStats();
+  showEmail();
+}
+
+function showEmail(){
+  const e=inbox[idx];
+  document.getElementById('avatar').textContent=getInitials(e.sender);
+  document.getElementById('from-name').textContent=e.sender.split('@')[0].replace(/[._]/g,' ');
+  document.getElementById('from-email').textContent=e.sender;
+  document.getElementById('subject').textContent=e.subject;
+  document.getElementById('body').textContent=e.body;
+  document.getElementById('counter').textContent=(idx+1)+' of '+inbox.length;
+}
+
+function classify(label){
+  const e=inbox[idx];
+  const correct=label===e.label;
+  let reward=0;
+  if(correct){reward=1.0;correctCount++;}
+  else if((label==='urgent'&&e.label==='normal')||(label==='normal'&&e.label==='urgent'))reward=0.3;
+  else reward=0.0;
+  scores.push(reward);
+  addHistory(e.subject,label,e.label,reward,correct);
+  showToast(reward,correct,e.label);
+  idx++;
+  updateStats();
+  if(idx>=inbox.length){showDone();}
+  else{showEmail();}
+}
+
+function showToast(reward,correct,correctLabel){
+  const t=document.getElementById('toast');
+  t.className='reward-toast';
+  if(reward===1.0){t.className+=' toast-correct show';t.textContent='Correct! +1.0';}
+  else if(reward===0.3){t.className+=' toast-partial show';t.textContent='Close! +0.3 (was '+correctLabel+')';}
+  else{t.className+=' toast-wrong show';t.textContent='Wrong! +0.0 (was '+correctLabel+')';}
+  setTimeout(()=>{t.classList.remove('show');},1500);
+}
+
+function addHistory(subject,predicted,correct,reward,isCorrect){
+  const empty=document.getElementById('empty-msg');
+  if(empty)empty.remove();
+  const item=document.createElement('div');
+  item.className='history-item';
+  const short=subject.length>28?subject.slice(0,28)+'...':subject;
+  const dotClass=reward===1?'correct':reward===0.3?'partial':'wrong';
+  const rewardClass=reward===1?'r1':reward===0.3?'r03':'r0';
+  item.innerHTML=`<div class="h-dot ${dotClass}"></div>
+    <span class="h-subject">${short}</span>
+    <span class="h-label">${predicted}</span>
+    <span class="h-reward ${rewardClass}">${reward.toFixed(1)}</span>`;
+  document.getElementById('history-list').prepend(item);
+}
+
+function updateStats(){
+  const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+  const acc=scores.length?(correctCount/scores.length*100):0;
+  document.getElementById('score').textContent=avg.toFixed(2);
+  document.getElementById('correct').textContent=correctCount;
+  document.getElementById('remaining').textContent=inbox.length-idx;
+  document.getElementById('accuracy').textContent=Math.round(acc)+'%';
+}
+
+function showDone(){
+  const avg=scores.reduce((a,b)=>a+b,0)/scores.length;
+  document.getElementById('email-view').style.display='none';
+  document.getElementById('done-view').style.display='block';
+  document.getElementById('final-score').textContent=avg.toFixed(2);
+}
+
+startGame();
+</script>
+</body>
+</html>
