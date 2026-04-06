@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from models import Action
 from environment import EmailTriageEnvironment
+from fastapi.responses import HTMLResponse
 
 app = FastAPI(title="Email Triage OpenEnv")
 
