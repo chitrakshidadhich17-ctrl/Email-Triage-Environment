@@ -107,11 +107,11 @@ def step(action: Action):
     correct = action.label == email["label"]
 
     if correct:
-        reward = Reward(value=1.0, correct=True, explanation="Correct!")
+        reward = Reward(value=0.95, correct=True, explanation="Correct!")
     elif (action.label, email["label"]) in [("urgent","normal"),("normal","urgent")]:
         reward = Reward(value=0.3, correct=False, explanation=f"Wrong. Was {email['label']}")
     else:
-        reward = Reward(value=0.0, correct=False, explanation=f"Wrong. Was {email['label']}")
+        reward = Reward(value=0.05, correct=False, explanation=f"Wrong. Was {email['label']}")
 
     state.scores.append(reward.value)
     state.index += 1
