@@ -129,7 +129,9 @@ def run_task(difficulty: str) -> dict:
         if not done:
             obs = result["observation"]
 
-    score = round(sum(rewards) / len(rewards), 3) if rewards else 0.0
+    raw = sum(rewards) / len(rewards) if rewards else 0.5
+    # Clamp strictly between 0 and 1 (exclusive)
+    score = round(min(max(raw, 0.01), 0.99), 3)
     print(f"[END] task={difficulty} score={score}")
     return {"difficulty": difficulty, "emails": len(rewards), "score": score}
 
